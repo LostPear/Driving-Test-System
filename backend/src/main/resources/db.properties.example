@@ -1,0 +1,23 @@
+# 数据库配置示例文件
+# 复制此文件为 db.properties 并填入实际配置
+# 注意：db.properties 已在 .gitignore 中，不会被提交到 Git
+
+# 数据库连接URL
+db.url=jdbc:mysql://localhost:3306/exam_db?useSSL=false&serverTimezone=UTC&characterEncoding=utf8
+
+# 数据库用户名
+db.username=root
+
+# 数据库密码
+db.password=your_password_here
+
+# Redis 配置（可选）
+redis.host=localhost
+redis.port=6379
+redis.password=
+redis.database=0
+
+# JWT 密钥（用于生成和验证 Token）
+jwt.secret=your_jwt_secret_key_here
+jwt.expiration=86400000
+
