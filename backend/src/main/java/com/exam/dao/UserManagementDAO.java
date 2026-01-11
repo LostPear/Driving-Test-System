@@ -146,8 +146,8 @@ public class UserManagementDAO {
         try {
             Map<String, Object> stats = new HashMap<>();
             
-            // 考试总数（只统计type='exam'的记录）
-            String sql = "SELECT COUNT(*) as total FROM exams WHERE user_id = ? AND type = 'exam' AND submitted_at IS NOT NULL";
+            // 考试总数（从exam_records表查询）
+            String sql = "SELECT COUNT(*) as total FROM exam_records WHERE user_id = ? AND submitted_at IS NOT NULL";
             PreparedStatement stmt = conn.prepareStatement(sql);
             stmt.setInt(1, id);
             ResultSet rs = stmt.executeQuery();
@@ -157,8 +157,8 @@ public class UserManagementDAO {
                 stats.put("totalExams", totalExams);
             }
             
-            // 通过次数（只统计type='exam'的记录）
-            sql = "SELECT COUNT(*) as passed FROM exams WHERE user_id = ? AND type = 'exam' AND passed = 1";
+            // 通过次数（从exam_records表查询）
+            sql = "SELECT COUNT(*) as passed FROM exam_records WHERE user_id = ? AND passed = 1 AND submitted_at IS NOT NULL";
             stmt = conn.prepareStatement(sql);
             stmt.setInt(1, id);
             rs = stmt.executeQuery();
@@ -166,8 +166,8 @@ public class UserManagementDAO {
                 stats.put("passedExams", rs.getInt("passed"));
             }
             
-            // 平均分（只统计type='exam'的记录）
-            sql = "SELECT AVG(score) as avgScore FROM exams WHERE user_id = ? AND type = 'exam' AND score IS NOT NULL";
+            // 平均分（从exam_records表查询）
+            sql = "SELECT AVG(score) as avgScore FROM exam_records WHERE user_id = ? AND score IS NOT NULL AND submitted_at IS NOT NULL";
             stmt = conn.prepareStatement(sql);
             stmt.setInt(1, id);
             rs = stmt.executeQuery();
@@ -180,8 +180,8 @@ public class UserManagementDAO {
                 stats.put("avgScore", avgScore);
             }
             
-            // 最高分（只统计type='exam'的记录）
-            sql = "SELECT MAX(score) as maxScore FROM exams WHERE user_id = ? AND type = 'exam' AND score IS NOT NULL";
+            // 最高分（从exam_records表查询）
+            sql = "SELECT MAX(score) as maxScore FROM exam_records WHERE user_id = ? AND score IS NOT NULL AND submitted_at IS NOT NULL";
             stmt = conn.prepareStatement(sql);
             stmt.setInt(1, id);
             rs = stmt.executeQuery();
@@ -189,9 +189,8 @@ public class UserManagementDAO {
                 stats.put("maxScore", rs.getObject("maxScore"));
             }
             
-            // 统计练习题目数（只统计type='practice'且已提交的记录，不重复的题目ID）
-            // 由于questions字段是JSON，我们需要解析它
-            sql = "SELECT questions FROM exams WHERE user_id = ? AND type = 'practice' AND submitted_at IS NOT NULL";
+            // 统计练习题目数（使用JSON字段）
+            sql = "SELECT questions FROM practice_records WHERE user_id = ? AND submitted_at IS NOT NULL";
             stmt = conn.prepareStatement(sql);
             stmt.setInt(1, id);
             rs = stmt.executeQuery();
@@ -201,19 +200,12 @@ public class UserManagementDAO {
                 String questionsJson = rs.getString("questions");
                 if (questionsJson != null && !questionsJson.isEmpty()) {
                     try {
-                        // 使用ObjectMapper解析JSON数组
                         @SuppressWarnings("unchecked")
                         List<Object> ids = mapper.readValue(questionsJson, List.class);
                         if (ids != null) {
                             for (Object idObj : ids) {
                                 if (idObj instanceof Number) {
                                     questionIds.add(((Number) idObj).intValue());
-                                } else if (idObj instanceof String) {
-                                    try {
-                                        questionIds.add(Integer.parseInt((String) idObj));
-                                    } catch (NumberFormatException e) {
-                                        // 忽略无效的ID
-                                    }
                                 }
                             }
                         }
@@ -224,8 +216,8 @@ public class UserManagementDAO {
             }
             stats.put("practiceCount", questionIds.size());
             
-            // 统计练习详情：答对和答错题目数（只统计type='practice'的记录）
-            sql = "SELECT questions, answers FROM exams WHERE user_id = ? AND type = 'practice' AND submitted_at IS NOT NULL AND answers IS NOT NULL AND answers != '{}'";
+            // 统计练习详情：答对和答错题目数（使用JSON字段）
+            sql = "SELECT questions, answers FROM practice_records WHERE user_id = ? AND submitted_at IS NOT NULL AND answers IS NOT NULL AND answers != '{}'";
             stmt = conn.prepareStatement(sql);
             stmt.setInt(1, id);
             rs = stmt.executeQuery();
@@ -243,61 +235,44 @@ public class UserManagementDAO {
                         // 解析题目ID列表
                         @SuppressWarnings("unchecked")
                         List<Object> questionIdsObj = mapper.readValue(questionsJson, List.class);
-                        List<Integer> qIds = new ArrayList<>();
-                        for (Object idObj : questionIdsObj) {
-                            if (idObj instanceof Number) {
-                                qIds.add(((Number) idObj).intValue());
-                            } else if (idObj instanceof String) {
-                                try {
-                                    qIds.add(Integer.parseInt((String) idObj));
-                                } catch (NumberFormatException e) {
-                                    // 忽略无效的ID
-                                }
-                            }
-                        }
-                        
-                        // 解析答案
                         @SuppressWarnings("unchecked")
                         Map<String, Object> answersMap = mapper.readValue(answersJson, Map.class);
-                        Map<Integer, Integer> answers = new HashMap<>();
-                        for (Map.Entry<String, Object> entry : answersMap.entrySet()) {
-                            int questionId = Integer.parseInt(entry.getKey());
-                            int answer;
-                            if (entry.getValue() instanceof Integer) {
-                                answer = (Integer) entry.getValue();
-                            } else if (entry.getValue() instanceof Number) {
-                                answer = ((Number) entry.getValue()).intValue();
-                            } else {
-                                answer = Integer.parseInt(entry.getValue().toString());
-                            }
-                            answers.put(questionId, answer);
-                        }
                         
                         // 检查每个题目的答案是否正确
-                        for (Integer questionId : qIds) {
-                            Integer userAnswer = answers.get(questionId);
-                            if (userAnswer != null) {
-                                // 获取题目的正确答案
-                                Question question = QuestionDAO.getQuestionById(questionId);
-                                if (question != null) {
-                                    boolean isCorrect = false;
-                                    if ("multiple".equals(question.getType())) {
-                                        // 多选题：检查答案是否在correctAnswers中
-                                        List<Integer> correctAnswers = question.getCorrectAnswers();
-                                        if (correctAnswers != null && correctAnswers.contains(userAnswer)) {
-                                            isCorrect = true;
+                        for (Object idObj : questionIdsObj) {
+                            if (idObj instanceof Number) {
+                                int questionId = ((Number) idObj).intValue();
+                                String questionIdStr = String.valueOf(questionId);
+                                Object answerObj = answersMap.get(questionIdStr);
+                                
+                                if (answerObj != null) {
+                                    // 获取题目的正确答案
+                                    Question question = QuestionDAO.getQuestionById(questionId);
+                                    if (question != null) {
+                                        int userAnswer;
+                                        if (answerObj instanceof Number) {
+                                            userAnswer = ((Number) answerObj).intValue();
+                                        } else {
+                                            userAnswer = Integer.parseInt(answerObj.toString());
                                         }
-                                    } else {
-                                        // 单选题和判断题：直接比较
-                                        if (userAnswer == question.getCorrectAnswer()) {
-                                            isCorrect = true;
+                                        
+                                        boolean isCorrect = false;
+                                        if ("multiple".equals(question.getType())) {
+                                            List<Integer> correctAnswers = question.getCorrectAnswers();
+                                            if (correctAnswers != null && correctAnswers.contains(userAnswer)) {
+                                                isCorrect = true;
+                                            }
+                                        } else {
+                                            if (userAnswer == question.getCorrectAnswer()) {
+                                                isCorrect = true;
+                                            }
                                         }
-                                    }
-                                    
-                                    if (isCorrect) {
-                                        correctCount++;
-                                    } else {
-                                        wrongCount++;
+                                        
+                                        if (isCorrect) {
+                                            correctCount++;
+                                        } else {
+                                            wrongCount++;
+                                        }
                                     }
                                 }
                             }
@@ -330,4 +305,3 @@ public class UserManagementDAO {
         }
     }
 }
-
