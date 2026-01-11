@@ -2,21 +2,85 @@
 # 复制此文件为 db.properties 并填入实际配置
 # 注意：db.properties 已在 .gitignore 中，不会被提交到 Git
 
+# ========== 数据库连接配置 ==========
 # 数据库连接URL
-db.url=jdbc:mysql://localhost:3306/exam_db?useSSL=false&serverTimezone=UTC&characterEncoding=utf8
+db.url=jdbc:mysql://localhost:3306/exam_db?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&allowPublicKeyRetrieval=true
 
 # 数据库用户名
 db.username=root
 
 # 数据库密码
-db.password=your_password_here
+db.password=123456
 
-# Redis 配置（可选）
+# 数据库驱动类（通常不需要修改）
+db.driver=com.mysql.cj.jdbc.Driver
+
+# ========== HikariCP 连接池配置 ==========
+# 最小空闲连接数（推荐值：5-10）
+hikari.minimumIdle=5
+
+# 最大连接池大小（推荐值：根据并发量调整，通常为CPU核心数*2+磁盘数）
+hikari.maximumPoolSize=20
+
+# 连接超时时间（毫秒），等待连接池分配连接的最大时间
+hikari.connectionTimeout=30000
+
+# 空闲连接超时时间（毫秒），空闲连接在池中保留的最大时间
+hikari.idleTimeout=600000
+
+# 连接最大生命周期（毫秒），连接在池中的最大存活时间
+hikari.maxLifetime=1800000
+
+# 连接泄漏检测阈值（毫秒），用于检测连接泄漏，0表示禁用
+hikari.leakDetectionThreshold=60000
+
+# 连接测试查询（用于验证连接是否有效）
+hikari.connectionTestQuery=SELECT 1
+
+# 连接初始化SQL（每个新连接建立时执行）
+hikari.connectionInitSql=SET NAMES utf8mb4
+
+# 连接池名称（用于日志和监控）
+hikari.poolName=ExamSystemPool
+
+# ========== MySQL 性能优化配置 ==========
+# 启用预编译语句缓存
+hikari.cachePrepStmts=true
+
+# 预编译语句缓存大小
+hikari.prepStmtCacheSize=250
+
+# 预编译语句缓存SQL限制
+hikari.prepStmtCacheSqlLimit=2048
+
+# 使用服务器端预编译语句
+hikari.useServerPrepStmts=true
+
+# 使用本地会话状态
+hikari.useLocalSessionState=true
+
+# 重写批量语句
+hikari.rewriteBatchedStatements=true
+
+# 缓存结果集元数据
+hikari.cacheResultSetMetadata=true
+
+# 缓存服务器配置
+hikari.cacheServerConfiguration=true
+
+# 省略自动提交设置
+hikari.elideSetAutoCommits=true
+
+# 维护时间统计（设置为false可提升性能）
+hikari.maintainTimeStats=false
+
+# ========== Redis 配置（可选）==========
 redis.host=localhost
 redis.port=6379
 redis.password=
 redis.database=0
 
+# ========== JWT 配置 ==========
 # JWT 密钥（用于生成和验证 Token）
 jwt.secret=your_jwt_secret_key_here
 jwt.expiration=86400000

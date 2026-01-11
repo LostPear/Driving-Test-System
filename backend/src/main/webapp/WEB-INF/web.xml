@@ -7,6 +7,11 @@
     
     <display-name>Exam System Backend</display-name>
     
+    <!-- Connection Pool Listener (连接池监听器，用于优雅关闭) -->
+    <listener>
+        <listener-class>com.exam.util.ConnectionPoolListener</listener-class>
+    </listener>
+    
     <!-- Rate Limit Filter (速率限制过滤器，需要在CORS之前执行) -->
     <filter>
         <filter-name>RateLimitFilter</filter-name>
