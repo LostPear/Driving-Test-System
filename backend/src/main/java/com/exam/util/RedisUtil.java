@@ -38,6 +38,7 @@ public class RedisUtil {
             config.setTestOnReturn(true); // 归还连接时检查有效性
             config.setTestWhileIdle(true); // 空闲时检查有效性
             config.setMaxWaitMillis(3000); // 获取连接最大等待时间
+            config.setBlockWhenExhausted(true); // 连接池耗尽时阻塞
             
             if (REDIS_PASSWORD != null && !REDIS_PASSWORD.isEmpty()) {
                 jedisPool = new JedisPool(config, REDIS_HOST, REDIS_PORT, 3000, REDIS_PASSWORD, REDIS_DATABASE);
@@ -57,9 +58,9 @@ public class RedisUtil {
     }
     
     /**
-     * 获取Jedis连接
+     * 获取Jedis连接（用于需要手动管理连接的场景）
      */
-    private static Jedis getJedis() {
+    public static Jedis getJedis() {
         if (jedisPool == null) {
             return null;
         }
@@ -68,6 +69,19 @@ public class RedisUtil {
         } catch (Exception e) {
             logger.error("获取Redis连接失败: {}", e.getMessage());
             return null;
+        }
+    }
+    
+    /**
+     * 归还Jedis连接到连接池（用于手动管理连接的场景）
+     */
+    public static void returnJedis(Jedis jedis) {
+        if (jedis != null && jedisPool != null) {
+            try {
+                jedis.close(); // Jedis实现了AutoCloseable，close()方法会归还连接到池
+            } catch (Exception e) {
+                logger.error("归还Redis连接失败: {}", e.getMessage());
+            }
         }
     }
     
@@ -385,4 +399,3 @@ public class RedisUtil {
         }
     }
 }
-

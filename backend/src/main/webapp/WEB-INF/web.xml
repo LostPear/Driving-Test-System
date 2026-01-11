@@ -7,6 +7,16 @@
     
     <display-name>Exam System Backend</display-name>
     
+    <!-- Rate Limit Filter (速率限制过滤器，需要在CORS之前执行) -->
+    <filter>
+        <filter-name>RateLimitFilter</filter-name>
+        <filter-class>com.exam.filter.RateLimitFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>RateLimitFilter</filter-name>
+        <url-pattern>/api/*</url-pattern>
+    </filter-mapping>
+    
     <!-- CORS Filter -->
     <filter>
         <filter-name>CorsFilter</filter-name>
